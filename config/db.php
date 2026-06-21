@@ -1,20 +1,21 @@
 <?php
-// Usamos las variables de entorno configuradas en Render
-$host = getenv('DB_HOST');
-$user = getenv('DB_USER');
-$pass = getenv('DB_PASS');
-$db   = getenv('DB_NAME');
-$port = getenv('DB_PORT');
+// Lee la variable que pusiste en Render
+$dbUrl = getenv('DATABASE_URL');
+$dbParts = parse_url($dbUrl);
 
-// Inicializamos la conexión
-$conexion = mysqli_init();
+$host = $dbParts['host'];
+$port = $dbParts['port'];
+$db   = ltrim($dbParts['path'], '/');
+$user = $dbParts['user'];
+$pass = $dbParts['pass'];
 
-// Aquí le decimos a mysqli que use el certificado ca.pem que subiste
-// Asegúrate de que el archivo ca.pem esté en la misma carpeta 'config'
-mysqli_ssl_set($conexion, NULL, NULL, __DIR__ . '/ca.pem', NULL, NULL);
+$dsn = "pgsql:host=$host;port=$port;dbname=$db;";
 
-// Conectamos
-if (!mysqli_real_connect($conexion, $host, $user, $pass, $db, $port, NULL, MYSQLI_CLIENT_SSL)) {
-    die("Error de conexión con SSL: " . mysqli_connect_error());
+try {
+    // Conexión usando PDO
+    $conexion = new PDO($dsn, $user, $pass);
+    $conexion->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (PDOException $e) {
+    die("Error de conexión: " . $e->getMessage());
 }
 ?>
