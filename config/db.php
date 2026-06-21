@@ -1,7 +1,7 @@
 <?php
 $host = "mysql-2b6cef58-lissethvtg-7b3f.aivencloud.com";
 $user = "avnadmin";
-$pass = "AVNS_oxWuaB71vtR8XESkjNh"; 
+$pass = "AVNS_ihzjatSKhF24ksM343R"; 
 $db   = "defaultdb";
 $port = 20544; 
 
