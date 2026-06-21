@@ -1,16 +1,20 @@
 <?php
-// Usaremos variables simples sin funciones extra que puedan fallar
-$host = 'mysql-2b6cef58-lissethvtg-7b3f.aivencloud.com';
-$user = 'avnadmin';
-$pass = 'AVNS_ihzjatSKhF24ksM343R'; 
-$db   = 'defaultdb';
-$port = 20544;
+// Usamos las variables de entorno configuradas en Render
+$host = getenv('DB_HOST');
+$user = getenv('DB_USER');
+$pass = getenv('DB_PASS');
+$db   = getenv('DB_NAME');
+$port = getenv('DB_PORT');
 
+// Inicializamos la conexión
 $conexion = mysqli_init();
-// Esto ayuda a que no intente buscar certificados SSL que no tenemos configurados
-mysqli_options($conexion, MYSQLI_OPT_SSL_MODE, MYSQLI_CLIENT_SSL_DONT_VERIFY_SERVER_CERT);
 
-if (!mysqli_real_connect($conexion, $host, $user, $pass, $db, $port)) {
-    die("Error de conexión: " . mysqli_connect_error());
+// Aquí le decimos a mysqli que use el certificado ca.pem que subiste
+// Asegúrate de que el archivo ca.pem esté en la misma carpeta 'config'
+mysqli_ssl_set($conexion, NULL, NULL, __DIR__ . '/ca.pem', NULL, NULL);
+
+// Conectamos
+if (!mysqli_real_connect($conexion, $host, $user, $pass, $db, $port, NULL, MYSQLI_CLIENT_SSL)) {
+    die("Error de conexión con SSL: " . mysqli_connect_error());
 }
 ?>
