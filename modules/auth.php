@@ -1,50 +1,54 @@
 <?php
 session_start();
-// Forzar visualización de errores para evitar pantallas blancas durante el desarrollo
+// Forzar visualización de errores durante el desarrollo
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
-require_once('../config/db.php');
-date_default_timezone_set('America/Mexico_City'); // Ajusta a tu zona horaria
+require_once('../config/db.php'); // Asegúrate de que este archivo use PDO como te indiqué antes
+date_default_timezone_set('America/Mexico_City');
 
 $action = $_GET['action'] ?? '';
 
-// --- 1. FUNCIÓN DE REGISTRO (Crear Cuenta) ---
+// --- 1. FUNCIÓN DE REGISTRO ---
 if ($action == 'register') {
-    $user = mysqli_real_escape_string($conexion, $_POST['usuario']);
-    $pass = mysqli_real_escape_string($conexion, $_POST['password']);
+    $user = $_POST['usuario'];
+    $pass = $_POST['password']; // Considera usar password_hash() en el futuro
     $rol  = $_POST['rol'];
 
-    $sql = "INSERT INTO usuarios (username, password, rol) VALUES ('$user', '$pass', '$rol')";
+    $sql = "INSERT INTO usuarios (username, password, rol) VALUES (?, ?, ?)";
+    $stmt = $conexion->prepare($sql);
     
-    if (mysqli_query($conexion, $sql)) {
+    if ($stmt->execute([$user, $pass, $rol])) {
         header("Location: ../index.php?msg=cuenta_creada");
     } else {
-        echo "Error al crear cuenta: " . mysqli_error($conexion);
+        echo "Error al crear cuenta.";
     }
     exit();
 }
 
-// --- 2. FUNCIÓN DE LOGIN (Con Bitácora) ---
+// --- 2. FUNCIÓN DE LOGIN ---
 if ($action == 'login') {
-    $user = mysqli_real_escape_string($conexion, $_POST['usuario']);
-    $pass = mysqli_real_escape_string($conexion, $_POST['password']);
+    $user = $_POST['usuario'];
+    $pass = $_POST['password'];
     $rol_form = $_POST['rol'];
 
-    // Datos para la bitácora
     $fecha = date('Y-m-d');
     $hora = date('H:i:s');
 
-    $sql = "SELECT * FROM usuarios WHERE username = '$user' AND password = '$pass'";
-    $resultado = mysqli_query($conexion, $sql);
+    // Consulta usando sentencia preparada
+    $sql = "SELECT * FROM usuarios WHERE username = ?";
+    $stmt = $conexion->prepare($sql);
+    $stmt->execute([$user]);
+    $datos = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if ($resultado && mysqli_num_rows($resultado) > 0) {
-        $datos = mysqli_fetch_assoc($resultado);
+    // Verificar si el usuario existe y la contraseña coincide
+    if ($datos && $pass === $datos['password']) {
 
         // Validar si es admin intentando entrar como tal
         if ($rol_form == 'admin' && $datos['rol'] != 'admin') {
             $estado = "Fallido (Sin permisos de Admin)";
-            mysqli_query($conexion, "INSERT INTO bitacora (usuario, fecha, hora, estado) VALUES ('$user', '$fecha', '$hora', '$estado')");
+            $stmtBitacora = $conexion->prepare("INSERT INTO bitacora (usuario, fecha, hora, estado) VALUES (?, ?, ?, ?)");
+            $stmtBitacora->execute([$user, $fecha, $hora, $estado]);
             header("Location: ../index.php?error=permisos");
             exit();
         }
@@ -54,13 +58,15 @@ if ($action == 'login') {
         $_SESSION['rol'] = $datos['rol'];
         $estado = "Exitoso";
         
-        mysqli_query($conexion, "INSERT INTO bitacora (usuario, fecha, hora, estado) VALUES ('$user', '$fecha', '$hora', '$estado')");
+        $stmtBitacora = $conexion->prepare("INSERT INTO bitacora (usuario, fecha, hora, estado) VALUES (?, ?, ?, ?)");
+        $stmtBitacora->execute([$user, $fecha, $hora, $estado]);
 
         header($_SESSION['rol'] == 'admin' ? "Location: ../Dashboard.php" : "Location: ../Catalogo.php");
     } else {
         // Login Fallido
         $estado = "Fallido (Datos incorrectos)";
-        mysqli_query($conexion, "INSERT INTO bitacora (usuario, fecha, hora, estado) VALUES ('$user', '$fecha', '$hora', '$estado')");
+        $stmtBitacora = $conexion->prepare("INSERT INTO bitacora (usuario, fecha, hora, estado) VALUES (?, ?, ?, ?)");
+        $stmtBitacora->execute([$user, $fecha, $hora, $estado]);
         header("Location: ../index.php?error=datos");
     }
     exit();
